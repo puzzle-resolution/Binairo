@@ -4,10 +4,10 @@ import { registerWorkerWithBlob } from './utils/worker';
 import { BlockTypeEnum, InitBlock, Position } from './types/block';
 import { State, BlockStatus } from './types/state';
 
-const mockTask = true; //mock调试模式
+const mockTask = false; //mock调试模式
 const mockData = {
-    taskKey: "b00c11c0a1a1f1b1a1l00a0b00a0g0m0a1a1c0a0b0b0h1a0",
-    puzzleSize: 8,
+    taskKey: "b0c0h1a1b1a11b11e0d1a1c0e11a0e0d01b00a00c1k0f1l1c0a1a0b00a0g0a0b01d1e1d1e1d0e1k0a1g1d00b0a1c11a11d1a00a0c1n1c1b0b11b11c1e00a0e0k0c11a1c0e1e1i11b1a0c0b0b1h0b1i11d1a1a1c0g0b1a00f0d1b0b0e0b11d1a1b1e00c1b1g1e0b0h0j1a00f0c1c11a0b0a0a1f0a0c1d1d0c01c0a1b01c1d1g1a0c1g0g1a11a1f1d1a1d1m1g0f0b0a0a1e11b1c1b1a1i0c1a00b0b0b1g1i1f1c0a01c1e01f0b1b0a0e11a00a0e0e0q00c1d0a0i1c00d1a1c00h1a0c1d1k0b1b0d1e1b0a00a0c1c0a10a0c11b",
+    puzzleSize: 30,
 };
 
 try {
@@ -357,6 +357,35 @@ export default class Binairo {
         return;
     }
 
+    const onmessage = (e: MessageEvent) => {
+        const { tasks, puzzleSize } = JSON.parse(e.data);
+        const pipe = new Binairo(tasks, puzzleSize);
+        const answer = pipe.solve();
+        (postMessage as any)(answer);
+    }
+    //此处采用hack写法，需要写进所有依赖函数
+    const scriptStr = `
+        ${Binairo.toString()} 
+        onmessage=${onmessage.toString()}
+    `;
+
+    const taskKey: string = task;
+    const tasks = Game.task;
+    console.info('task', taskKey, tasks);
+    const timer1 = new Date;
+    registerWorkerWithBlob({
+        scriptStr,
+        postMessageStr: JSON.stringify({ tasks, puzzleSize: 0 }),
+        onMessage: (e: MessageEvent<string>) => {
+            const timer2 = new Date;
+            const answer = e.data;
+            console.info('answer', answer);
+            console.info('耗时', timer2.valueOf() - timer1.valueOf(), 'ms');
+            replaceAnswer(answer);
+            window.submit = submitAnswer;
+            window.useRobot && submitAnswer();
+        }
+    });
 
 })()
 

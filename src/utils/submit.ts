@@ -1,4 +1,5 @@
 export function replaceAnswer(answer: string) {
+    //@ts-ignore
     if (document && $) {
         $('#puzzleForm').attr('onsubmit', `console.log('customer onsubmit');
         Game.saveState();
