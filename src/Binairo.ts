@@ -6,9 +6,9 @@ import { State, BlockStatus } from './types/state';
 
 const mockTask = false; //mock调试模式
 const mockData = {
-    taskKey: "a0b0a0a0c0a0g0a0c101f0e1b1a1c0i0c0h01f0b10c1c0a1a1a0a11e1a1c1d1b1a1t0p11b0a1b1d01b0c1b00e0e0a0d1a0g0a1g01a1b0a0e11c1h1a0a0d1e0b1c1g1g0b1d1f0a0c0c1b01j0b1b1o0a0b0a1h11b1a0a00a0d0h1b1b0a1a11c1c1d0a01r0f0a1a1a1b00c11b0f00b1i10d1a1b1a0e1a0a11b0f0f1f0k0d1g01d0d0f0a0c0c0a1e0c1c1a1f0b1f0f1e1a0a0b01b1f1a00d1a0b0c0b1f01a1c0a01f0k0h1d0f0b1a11c0a0a01h1a0b1f1c00k1b0b1d0b11e1g0b1d0c0d1c0d0f1a1b00c1a1b0a1b111d0e0j1a1c1a1c0d1e1a1b11m1a1b11a0h1b1c0h0c0e0e0b1b10b1a0a11f11i01c1g0c0a1f0g0c10f1g1a01d0a0c0b0c0d00e1b0d0a0e1b1e1a0a0c00b00n0b1d0i00b11b11a1a0b1b1c1",
-    puzzleHeight: 40,
-    puzzleWidth: 30,
+    taskKey: "g1d1c1d0g10a0a0a",
+    puzzleHeight: 6,
+    puzzleWidth: 6,
 };
 
 try {
@@ -280,15 +280,93 @@ export default class Binairo {
         }
         return true;
     }
+    updateLineRule3 = (data: State, queue: QueueType, l: number): boolean => {
+        const { blockState } = data;
+        const line = blockState[l].slice();
+        const bRest = line.length / 2 - line.filter(i => i === BlockTypeEnum.Black).length;
+        const wRest = line.length / 2 - line.filter(i => i === BlockTypeEnum.White).length;
+        if (bRest === 1 && wRest === 1) {
+            const stringify = (l: BlockTypeEnum[]) => l.slice().map(item => ({
+                [BlockTypeEnum.Black]: 1,
+                [BlockTypeEnum.White]: 0,
+                [BlockTypeEnum.Space]: 'n',
+            }[item])).join('');
+
+            const solvedLines = blockState.filter(l => l.every(i => i !== BlockTypeEnum.Space));
+            const [currSpaceIndex1, currSpaceIndex2] = line.slice().map((v, i) => v === BlockTypeEnum.Space ? i : undefined).filter(i => i !== undefined) as number[];
+            let temp1 = line.slice(), temp2 = line.slice();
+            temp1[currSpaceIndex1] = BlockTypeEnum.Black, temp1[currSpaceIndex2] = BlockTypeEnum.White;
+            temp2[currSpaceIndex1] = BlockTypeEnum.White, temp2[currSpaceIndex2] = BlockTypeEnum.Black;
+            const currLineStr1 = stringify(temp1), currLineStr2 = stringify(temp2);
+            for (let sline of solvedLines) {
+                const slineStr = stringify(sline);
+                if (slineStr === currLineStr1) {
+                    blockState[l][currSpaceIndex1] = BlockTypeEnum.White;
+                    blockState[l][currSpaceIndex2] = BlockTypeEnum.Black;
+                    this.addPointToQueue(data, queue, { x: l, y: currSpaceIndex1 });
+                    this.addPointToQueue(data, queue, { x: l, y: currSpaceIndex2 });
+                    return true;
+                } else if (slineStr === currLineStr2) {
+                    blockState[l][currSpaceIndex1] = BlockTypeEnum.Black;
+                    blockState[l][currSpaceIndex2] = BlockTypeEnum.White;
+                    this.addPointToQueue(data, queue, { x: l, y: currSpaceIndex1 });
+                    this.addPointToQueue(data, queue, { x: l, y: currSpaceIndex2 });
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    updateColumnRule3 = (data: State, queue: QueueType, c: number): boolean => {
+        const { blockState } = data;
+        const column = blockState.slice().map(arr => arr[c]);
+        const bRest = blockState.length / 2 - column.filter(i => i === BlockTypeEnum.Black).length;
+        const wRest = blockState.length / 2 - column.filter(i => i === BlockTypeEnum.White).length;
+        if (bRest === 1 && wRest === 1) {
+            const stringify = (c: BlockTypeEnum[]) => c.slice().map(item => ({
+                [BlockTypeEnum.Black]: 1,
+                [BlockTypeEnum.White]: 0,
+                [BlockTypeEnum.Space]: 'n',
+            }[item])).join('');
+
+            const solvedColumns = blockState.filter(c => c.every(i => i !== BlockTypeEnum.Space));
+            const [currSpaceIndex1, currSpaceIndex2] = column.slice().map((v, i) => v === BlockTypeEnum.Space ? i : undefined).filter(i => i !== undefined) as number[];
+            let temp1 = column.slice(), temp2 = column.slice();
+            temp1[currSpaceIndex1] = BlockTypeEnum.Black, temp1[currSpaceIndex2] = BlockTypeEnum.White;
+            temp2[currSpaceIndex1] = BlockTypeEnum.White, temp2[currSpaceIndex2] = BlockTypeEnum.Black;
+            const currColStr1 = stringify(temp1), currColStr2 = stringify(temp2);
+            for (let scolumn of solvedColumns) {
+                const scolumnStr = stringify(scolumn);
+                if (scolumnStr === currColStr1) {
+                    blockState[currSpaceIndex1][c] = BlockTypeEnum.White;
+                    blockState[currSpaceIndex2][c] = BlockTypeEnum.Black;
+                    this.addPointToQueue(data, queue, { x: currSpaceIndex1, y: c });
+                    this.addPointToQueue(data, queue, { x: currSpaceIndex2, y: c });
+                    return true;
+                } else if (scolumnStr === currColStr2) {
+                    blockState[currSpaceIndex1][c] = BlockTypeEnum.Black;
+                    blockState[currSpaceIndex2][c] = BlockTypeEnum.White;
+                    this.addPointToQueue(data, queue, { x: currSpaceIndex1, y: c });
+                    this.addPointToQueue(data, queue, { x: currSpaceIndex2, y: c });
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     //尝试更新行/列
     //（待定）附加逻辑：有任意行更新，则不再对列做处理，并返回true；否则对列尝试更新
     updateLines = (data: State): boolean => {
         let queue = new Set<string>();
         for (let l = 0; l < this.graph.length; l++) {
-            if (!this.updateLine(data, queue, l)) { return false; }
+            if (!this.updateLineRule3(data, queue, l)) {
+                if (!this.updateLine(data, queue, l)) { return false; }
+            }
         }
         for (let c = 0; c < this.graph[0].length; c++) {
-            if (!this.updateColumn(data, queue, c)) { return false; }
+            if (!this.updateColumnRule3(data, queue, c)) {
+                if (!this.updateColumn(data, queue, c)) { return false; }
+            }
         }
         return this.clearUpdateQueue(data, queue);
     }
@@ -301,7 +379,7 @@ export default class Binairo {
             if (this.verificate(data)) { return data; }
             if (!this.updateLines(data)) { break; }
 
-            if (cnt > 1000) { break; } //避免死循环
+            if (cnt > 100) { break; } //避免死循环
         } while (1);
 
         return false;
