@@ -6,8 +6,9 @@ import { State, BlockStatus } from './types/state';
 
 const mockTask = false; //mock调试模式
 const mockData = {
-    taskKey: "b0c0h1a1b1a11b11e0d1a1c0e11a0e0d01b00a00c1k0f1l1c0a1a0b00a0g0a0b01d1e1d1e1d0e1k0a1g1d00b0a1c11a11d1a00a0c1n1c1b0b11b11c1e00a0e0k0c11a1c0e1e1i11b1a0c0b0b1h0b1i11d1a1a1c0g0b1a00f0d1b0b0e0b11d1a1b1e00c1b1g1e0b0h0j1a00f0c1c11a0b0a0a1f0a0c1d1d0c01c0a1b01c1d1g1a0c1g0g1a11a1f1d1a1d1m1g0f0b0a0a1e11b1c1b1a1i0c1a00b0b0b1g1i1f1c0a01c1e01f0b1b0a0e11a00a0e0e0q00c1d0a0i1c00d1a1c00h1a0c1d1k0b1b0d1e1b0a00a0c1c0a10a0c11b",
-    puzzleSize: 30,
+    taskKey: "a0b0a0a0c0a0g0a0c101f0e1b1a1c0i0c0h01f0b10c1c0a1a1a0a11e1a1c1d1b1a1t0p11b0a1b1d01b0c1b00e0e0a0d1a0g0a1g01a1b0a0e11c1h1a0a0d1e0b1c1g1g0b1d1f0a0c0c1b01j0b1b1o0a0b0a1h11b1a0a00a0d0h1b1b0a1a11c1c1d0a01r0f0a1a1a1b00c11b0f00b1i10d1a1b1a0e1a0a11b0f0f1f0k0d1g01d0d0f0a0c0c0a1e0c1c1a1f0b1f0f1e1a0a0b01b1f1a00d1a0b0c0b1f01a1c0a01f0k0h1d0f0b1a11c0a0a01h1a0b1f1c00k1b0b1d0b11e1g0b1d0c0d1c0d0f1a1b00c1a1b0a1b111d0e0j1a1c1a1c0d1e1a1b11m1a1b11a0h1b1c0h0c0e0e0b1b10b1a0a11f11i01c1g0c0a1f0g0c10f1g1a01d0a0c0b0c0d00e1b0d0a0e1b1e1a0a0c00b00n0b1d0i00b11b11a1a0b1b1c1",
+    puzzleHeight: 40,
+    puzzleWidth: 30,
 };
 
 try {
@@ -20,11 +21,9 @@ type QueueType = Set<string>;
 
 export default class Binairo {
     graph: InitBlock[][];
-    puzzleSize: number;
     answer?: string;
-    constructor(graph: InitBlock[][], puzzleSize: number) {
+    constructor(graph: InitBlock[][]) {
         this.graph = graph;
-        this.puzzleSize = puzzleSize;
     }
     getBlockType = (block: InitBlock): BlockTypeEnum => {
         return {
@@ -57,7 +56,7 @@ export default class Binairo {
         if (!verificateMode) {
             const plineRest = blockState[x].length / 2 - blockState[x].filter(i => i === status).length;
             if (plineRest <= 0) { return false; }
-            const pcolumnRest = blockState[y].length / 2 - blockState.slice().map(arr => arr[y]).filter(i => i === status).length;
+            const pcolumnRest = blockState.length / 2 - blockState.slice().map(arr => arr[y]).filter(i => i === status).length;
             if (pcolumnRest <= 0) { return false; }
         }
         const same = (p: any, ...rest: any[]) => {
@@ -256,7 +255,7 @@ export default class Binairo {
         const line = data.blockState[l].slice();
         const nextLine = this.solvelc(line);
         for (let [index, item] of data.blockState[l].entries()) {
-            if (item === BlockTypeEnum.Space) {
+            if (item === BlockTypeEnum.Space && nextLine[index] !== BlockTypeEnum.Space) {
                 data.blockState[l][index] = nextLine[index];
                 this.addPointToQueue(data, queue, { x: l, y: index });
             } else if (item !== nextLine[index]) {
@@ -271,7 +270,7 @@ export default class Binairo {
         const nextColumn = this.solvelc(column);
         for (let [index, arr] of data.blockState.entries()) {
             const item = arr[c];
-            if (item === BlockTypeEnum.Space) {
+            if (item === BlockTypeEnum.Space && nextColumn[index] !== BlockTypeEnum.Space) {
                 data.blockState[index][c] = nextColumn[index];
                 this.addPointToQueue(data, queue, { x: index, y: c });
             } else if (item !== nextColumn[index]) {
@@ -302,7 +301,7 @@ export default class Binairo {
             if (this.verificate(data)) { return data; }
             if (!this.updateLines(data)) { break; }
 
-            if (cnt > 100) { break; } //避免死循环
+            if (cnt > 1000) { break; } //避免死循环
         } while (1);
 
         return false;
@@ -344,11 +343,11 @@ export default class Binairo {
 (() => {
     console.log('start');
     if (mockTask) {
-        const { puzzleSize, taskKey } = mockData;
-        const tasks = parseTask(taskKey, puzzleSize);
+        const { puzzleHeight, puzzleWidth, taskKey } = mockData;
+        const tasks = parseTask(taskKey, puzzleHeight, puzzleWidth);
         console.info('task', taskKey, tasks);
 
-        const binairo = new Binairo(tasks, puzzleSize);
+        const binairo = new Binairo(tasks);
         const timer1 = new Date;
         const answer = binairo.solve();
         const timer2 = new Date;
@@ -359,7 +358,7 @@ export default class Binairo {
 
     const onmessage = (e: MessageEvent) => {
         const { tasks, puzzleSize } = JSON.parse(e.data);
-        const pipe = new Binairo(tasks, puzzleSize);
+        const pipe = new Binairo(tasks);
         const answer = pipe.solve();
         (postMessage as any)(answer);
     }
@@ -375,7 +374,7 @@ export default class Binairo {
     const timer1 = new Date;
     registerWorkerWithBlob({
         scriptStr,
-        postMessageStr: JSON.stringify({ tasks, puzzleSize: 0 }),
+        postMessageStr: JSON.stringify({ tasks }),
         onMessage: (e: MessageEvent<string>) => {
             const timer2 = new Date;
             const answer = e.data;
